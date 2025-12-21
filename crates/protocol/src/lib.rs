@@ -1,10 +1,14 @@
-use serde::{de::Error as DeError, Deserialize, Deserializer, Serialize, Serializer};
+use nom::{
+    Finish, Parser, bytes::complete::take_while1, combinator::all_consuming,
+    error::Error as NomError,
+};
+use serde::{Deserialize, Deserializer, Serialize, Serializer, de::Error as DeError};
 use std::{fmt, ops::Deref, str::FromStr};
 use thiserror::Error;
 
 pub const MAX_SECRET_ID_LEN: usize = 64;
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct SecretId(String);
 
 impl SecretId {
@@ -13,13 +17,13 @@ impl SecretId {
         if len == 0 || len > MAX_SECRET_ID_LEN {
             return Err(SecretIdError::InvalidLength { len });
         }
-        if !input
-            .bytes()
-            .all(|b| matches!(b, b'a'..=b'z' | b'A'..=b'Z' | b'0'..=b'9' | b'_' | b'-'))
-        {
-            return Err(SecretIdError::InvalidCharacter);
-        }
-        Ok(Self(input.to_owned()))
+        let valid = |c: char| matches!(c, 'a'..='z' | 'A'..='Z' | '0'..='9' | '_' | '-');
+        let mut parser = all_consuming::<_, _, NomError<_>, _>(take_while1(valid));
+        parser
+            .parse(input)
+            .finish()
+            .map(|(_, matched)| Self(matched.to_owned()))
+            .map_err(|_| SecretIdError::InvalidCharacter)
     }
 
     pub fn as_str(&self) -> &str {
@@ -88,45 +92,13 @@ pub enum SecretIdError {
     InvalidCharacter,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(tag = "op", rename_all = "lowercase")]
-pub enum BrokerRequest {
-    Read(ReadRequest),
+pub mod pb {
+    tonic::include_proto!("opbroker");
+    pub const FILE_DESCRIPTOR_SET: &[u8] =
+        tonic::include_file_descriptor_set!("opbroker_descriptor");
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct ReadRequest {
-    pub id: SecretId,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub nonce: Option<String>,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct BrokerResponse {
-    pub ok: bool,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub value: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub error: Option<String>,
-}
-
-impl BrokerResponse {
-    pub fn success(value: impl Into<String>) -> Self {
-        Self {
-            ok: true,
-            value: Some(value.into()),
-            error: None,
-        }
-    }
-
-    pub fn denied(message: impl Into<String>) -> Self {
-        Self {
-            ok: false,
-            value: None,
-            error: Some(message.into()),
-        }
-    }
-}
+pub use pb::*;
 
 #[cfg(test)]
 mod tests {
@@ -150,34 +122,17 @@ mod tests {
     }
 
     #[test]
-    fn request_roundtrip() {
-        let id = SecretId::parse("github_token").unwrap();
-        let request = BrokerRequest::Read(ReadRequest {
-            id: id.clone(),
-            nonce: Some("abc".into()),
-        });
-        let json = serde_json::to_string(&request).unwrap();
-        let back: BrokerRequest = serde_json::from_str(&json).unwrap();
-        assert_eq!(request, back);
-        assert_eq!(
-            back,
-            BrokerRequest::Read(ReadRequest {
-                id,
-                nonce: Some("abc".into())
-            })
-        );
-    }
+    fn prost_structs_exist() {
+        let request = crate::pb::ReadSecretRequest {
+            id: "github_token".into(),
+            nonce: "abc".into(),
+        };
+        assert_eq!(request.id, "github_token");
+        assert_eq!(request.nonce, "abc");
 
-    #[test]
-    fn response_helpers() {
-        let ok = BrokerResponse::success("value");
-        assert!(ok.ok);
-        assert_eq!(ok.value.as_deref(), Some("value"));
-        assert!(ok.error.is_none());
-
-        let denied = BrokerResponse::denied("DENIED");
-        assert!(!denied.ok);
-        assert_eq!(denied.error.as_deref(), Some("DENIED"));
-        assert!(denied.value.is_none());
+        let response = crate::pb::ReadSecretResponse {
+            value: "secret".into(),
+        };
+        assert_eq!(response.value, "secret");
     }
 }

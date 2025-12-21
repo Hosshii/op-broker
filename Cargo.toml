@@ -16,3 +16,11 @@ tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 clap = { version = "4", features = ["derive"] }
 thiserror = "2"
+prost = "0.14"
+tonic = { version = "0.14", features = ["transport"] }
+tonic-prost-build = "0.14"
+tonic-prost = "0.14"
+tokio-stream = { version = "0.1", features = ["net"] }
+nom = { version = "7", default-features = false, features = ["alloc"] }
+tower = "0.5"
+hyper-util = { version = "0.1", features = ["client", "http1", "http2", "tokio"] }

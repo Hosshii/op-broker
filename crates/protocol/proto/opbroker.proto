@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+package opbroker;
+
+service BrokerService {
+  rpc ReadSecret (ReadSecretRequest) returns (ReadSecretResponse);
+}
+
+message ReadSecretRequest {
+  string id = 1;
+  string nonce = 2;
+}
+
+message ReadSecretResponse {
+  string value = 1;
+}
