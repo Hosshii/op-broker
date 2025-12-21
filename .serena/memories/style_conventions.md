@@ -1,0 +1,8 @@
+# Style and Conventions
+- **Rust Style**: Standard 4-space indentation, `snake_case` modules/functions, `PascalCase` types, `SCREAMING_SNAKE_CASE` constants/env vars. Split modules by function; keep files ≈300 lines and embed `mod tests` in same file. Favor helper modules (e.g., `server.rs`, `config.rs`, `op_client.rs`).
+- **Command Execution**: Always run `op` via `Command::new("op")` with explicit args; never use `sh -c` or manual string concatenation. Trim stdout newlines (`trim_end_matches('\n')`) and route errors/timeouts/stderr through helper in `op_client.rs` returning tonic `Status`.
+- **CLI UX**: Subcommands `read`, `export`, `init` share flags `--socket`, `--nonce`, `--json`, `--quiet`. JSON mode outputs must be `{ "ok": true/false, ... }` with errors mapped similarly.
+- **Security Logging**: Never log secret contents; redact sensitive data. Keep `~/.op-broker` at 0700 and socket/config at 0600, enforcing chmod explicitly when creating files or directories.
+- **Tests**: Write module tests inline; integration tests (e.g., `broker/tests/`) use `tempfile::TempDir` for sockets/permissions. Test names describe business rules (`denies_unknown_id`, `trims_op_output`) instead of `should_*`. Add regression tests for security/IPC fixes.
+- **Docs/Proto**: Maintain proto sources in `crates/protocol/proto/`; regenerate code with `tonic_prost_build` and update README/TASKS when proto changes. Store reusable instructions in `docs/`, link from README to avoid duplication.
+- **PR/Commit**: Commit summaries are imperative present tense (`feat: add nonce validation`). PRs list verification steps (`cargo fmt`, `cargo clippy`, `cargo test`, `just run-broker`). Never check in personal vault values; use placeholders like `op://DevVault/...`.

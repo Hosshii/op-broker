@@ -1,0 +1,11 @@
+# Suggested Commands
+- `ls`, `rg`, `git status`, `git diff` – inspect workspace layout, search files, and review changes (macOS/Darwin shell utilities).
+- `cargo build` / `cargo build -p broker` / `cargo build -p ctl` – compile the entire workspace or a specific crate.
+- `cargo fmt --all` – apply rustfmt across the workspace.
+- `cargo clippy --all-targets -- -D warnings` – lint all code and fail on warnings.
+- `cargo test --all -- --nocapture` – run workspace tests, including integration tests under `broker/tests/`.
+- `cargo run -p broker -- --config ~/.op-broker/config.json` – launch the macOS daemon with a given config.
+- `cargo run -p ctl -- --socket ~/.op-broker/op-broker.sock read <id> [--nonce <n>] [--json]` – invoke the CLI against a socket with optional nonce/JSON output.
+- `just run-broker` / `just run-ctl github_token` (if `just` available) – convenience commands for manual validation flows.
+- `ssh -N -R /tmp/op-broker.sock:~/.op-broker/op-broker.sock <devserver>` – example reverse tunnel to expose the Unix socket remotely.
+- `PROTOC=/path/to/protoc cargo build -p protocol` – regenerate tonic/prost bindings after editing `crates/protocol/proto/opbroker.proto` (if needed).
