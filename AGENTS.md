@@ -1,8 +1,10 @@
 # Repository Guidelines
 
 ## プロジェクト構成とモジュール方針
-- `broker/` は macOS 上で動作する daemon（`op-brokerd`）を収める Rust crate。`broker/src/` 配下は機能単位で細分化し、`config.rs`（allowlist 読み込み）、`server.rs`（Unix ソケット + RPC）、`op_client.rs`（`op read` 呼び出し）などに分割します。
+- `broker/` は macOS 上で動作する daemon（`op-brokerd`）を収める Rust crate。`broker/src/` 配下は機能単位で細分化し、`config.rs`（allowlist 読み込み）、`server.rs`（Unix ソケット + tonic gRPC）、`op_client.rs`（`op read` 呼び出し）などに分割します。
 - `ctl/` はコンテナ内で使う CLI crate。`read` / `export` / `init` をサブコマンドとして実装し、RPC の構造体は共有 crate（`crates/protocol/` など）に切り出して broker と共通化してください。
+- CLI(特に `read`) では `--socket`, `--nonce`, `--json`, `--quiet` などのフラグを統一し、JSON モード時は `{ "ok": true/false, ... }` で出力すること。
+- `crates/protocol/proto/` で proto を管理し、`tonic_prost_build` でコード生成します。proto を更新したら README/TASKS も忘れずに。
 - `configs/` には `config.example.json` など長期保存できるサンプル設定のみを置き、個人 vault の値は絶対に commit しないでください。
 - 運用補助は `scripts/`（SSH トンネル, launchd, compose）と `docs/`（threat-model, usage）に整理し、README と重複する内容はリンクで誘導します。
 
@@ -16,7 +18,7 @@
 ## コーディング規約と命名
 - Rust 標準の 4 スペースインデント、`snake_case`（関数・モジュール）、`PascalCase`（型）、`SCREAMING_SNAKE_CASE`（定数/環境変数）を徹底します。
 - ファイルは 300 行程度を上限の目安とし、拡張時は `mod security` などに分割してテストを同じファイル内に `mod tests` で配置します。
-- `op` の実行は常に `Command::new("op")` + 明示的引数。`sh -c` や文字列連結は禁止で、標準出力末尾の改行は `trim_end_matches('\n')` などで除去してください。
+- `op` の実行は常に `Command::new("op")` + 明示的引数。`sh -c` や文字列連結は禁止で、標準出力末尾の改行は `trim_end_matches('\n')` などで除去してください。タイムアウト・終了コード・stderr を gRPC `Status` へ map する helper (`op_client.rs`) を経由します。
 
 ## テスト方針
 - モジュール単位のテストは各ファイル内に書き、Unix ソケットやファイル権限を伴う振る舞いは `tempfile::TempDir` を使った integration test で検証します。

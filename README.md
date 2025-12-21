@@ -49,8 +49,8 @@
 
 * broker: `op-brokerd`（daemon）
 * listen: Unix domain socket `~/.op-broker/op-broker.sock`
-* RPC: JSON（一行 JSON で request/response）
-* 実行: `op` バイナリを子プロセス起動して `op read ...` する
+* RPC: tonic gRPC（proto は `crates/protocol/proto/opbroker.proto`、`ReadSecret` サービスのみ）
+* 実行: `op` バイナリを子プロセス起動して `op read ...` する（タイムアウト/エラーを gRPC `Status` に変換）
 
 ### 3.2 トンネル（Mac → dev server）
 
@@ -79,44 +79,40 @@ ssh -N \
 
 ## 4. API 仕様（固定ID方式）
 
-### 4.1 リクエスト
+### 4.1 リクエスト（`ReadSecretRequest`）
 
-1 行 JSON（改行区切り）。例：
+proto25 定義：
 
-```json
-{"op":"read","id":"github_token"}
+```
+message ReadSecretRequest {
+  string id = 1;
+  string nonce = 2; // 任意。未使用時は空文字。
+}
 ```
 
-#### フィールド
-
-* `op`: `"read"` のみ
 * `id`: allowlist に定義された ID 文字列（例 `github_token`）
-* `nonce`（任意/後述）: 1回限り利用用
+* `nonce`: 1回限り token（Phase 1 では空文字でも可）
 
-### 4.2 レスポンス
+### 4.2 レスポンス（`ReadSecretResponse`）
 
-成功：
-
-```json
-{"ok":true,"value":"...SECRET..."}
+```
+message ReadSecretResponse {
+  string value = 1; // secret 本体
+}
 ```
 
-失敗（例）：
-
-```json
-{"ok":false,"error":"DENIED"}
-```
+gRPC `Status` を `invalid_argument`（ID フォーマットエラー）、`not_found`（allowlist 非許可）、`internal`（`op` 実行失敗）で返す。クライアントや CLI はこれをユーザー向けに整形する。
 
 ### 4.3 allowlist の定義
 
-Mac 側に設定ファイル（例 `~/.op-broker/config.json`）：
+Mac 側に設定ファイル（例 `configs/config.example.json` をコピーして `~/.op-broker/config.json` に配置）：
 
 ```json
 {
+  "socket_path": "/Users/you/.op-broker/op-broker.sock",
   "items": {
-    "github_token": "op://DevVault/GitHub/token",
-    "aws_access_key": "op://DevVault/AWS/access_key_id",
-    "aws_secret_key": "op://DevVault/AWS/secret_access_key"
+    "github_token": { "op_path": "op://DevVault/GitHub/token" },
+    "aws_access_key": { "op_path": "op://DevVault/AWS/access_key_id" }
   }
 }
 ```
@@ -153,12 +149,11 @@ Mac 側に設定ファイル（例 `~/.op-broker/config.json`）：
 ### 5.2 クライアント（コンテナ側）
 
 * `op-brokerctl`（軽量 CLI）
-* `--socket /run/op-broker.sock read <id>`
-* 出力:
-
-  * デフォルトは raw 値（stdout）
-  * `--json` で JSON をそのまま吐く
-* `--export NAME=<id>` で `NAME=value` を出す（シェルで `export $(...)` できる形、ただしログ注意）
+* 基本構文: `op-brokerctl --socket /run/op-broker.sock read <id>`
+* `--nonce <text>` で nonce を明示指定（未指定の場合は空文字）
+* `--json` で `{ "ok": true, "value": "..." }` 形式を出力。エラー時は `{ "ok": false, ... }`
+* `--quiet` で標準出力を抑制（JSON モードでは無視）し、環境変数などへ転送する用途を想定
+* gRPC エラーは Exit code 1 & stderr で通知。JSON モードでは `ok:false` を返す
 
 ---
 
@@ -196,7 +191,7 @@ SSH が Unix socket の reverse を許さない環境向けに
 
 1. `config.json` 読み込み（items: id -> op path）
 2. Unix socket サーバ listen
-3. 1行 JSON request を受ける
+3. tonic gRPC (`ReadSecretRequest`) を受ける
 4. allowlist チェック
 5. `op read <path>` 実行して stdout を取得
 6. response JSON を返す
@@ -205,9 +200,8 @@ SSH が Unix socket の reverse を許さない環境向けに
 ### Phase 2: container CLI
 
 1. `--socket` 指定
-2. request JSON 作成して socket に送信
-3. response JSON を読んで `value` を stdout へ
-4. `--json` / `--quiet` などの UX
+2. tonic gRPC クライアントで Unix socket 接続
+3. レスポンスの `value` を stdout/JSON で出力し、`--json` / `--quiet` 等の UX を追加
 
 ### Phase 3: 運用補助
 

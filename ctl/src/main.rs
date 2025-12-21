@@ -1,11 +1,12 @@
 use anyhow::{Context, Result};
-use clap::{Parser, Subcommand};
+use clap::{Args, Parser, Subcommand};
 use hyper_util::rt::TokioIo;
 use protocol::{SecretId, pb::ReadSecretRequest, pb::broker_service_client::BrokerServiceClient};
-use std::{path::PathBuf, sync::Arc};
+use serde_json::json;
+use std::{path::PathBuf, process, sync::Arc};
 use tokio::net::UnixStream;
 use tonic::{
-    Request,
+    Request, Status,
     transport::{Channel, Endpoint},
 };
 use tower::service_fn;
@@ -29,14 +30,30 @@ struct Cli {
 
 #[derive(Debug, Subcommand)]
 enum Command {
-    Read { id: SecretId },
+    Read(ReadArgs),
+}
+
+#[derive(Debug, Args, Clone)]
+struct ReadArgs {
+    #[arg(value_name = "ID")]
+    id: SecretId,
+    #[arg(long, value_name = "TEXT", help = "Nonce 文字列を broker に渡す")]
+    nonce: Option<String>,
+    #[arg(long, help = "JSON 形式 ({\"ok\":true,...}) で出力する")]
+    json: bool,
+    #[arg(long, help = "stdout を抑制 (JSON モードでは無視)")]
+    quiet: bool,
 }
 
 #[tokio::main]
 async fn main() -> Result<()> {
     init_tracing()?;
     let cli = Cli::parse();
-    run(cli).await
+    if let Err(err) = run(cli).await {
+        eprintln!("error: {err}");
+        process::exit(1);
+    }
+    Ok(())
 }
 
 async fn run(cli: Cli) -> Result<()> {
@@ -44,17 +61,8 @@ async fn run(cli: Cli) -> Result<()> {
     info!(socket = %cli.socket.display(), "connected to broker");
 
     match cli.command {
-        Command::Read { id } => {
-            let request = Request::new(ReadSecretRequest {
-                id: id.into_string(),
-                nonce: String::new(),
-            });
-            let response = client.read_secret(request).await?;
-            let reply = response.into_inner();
-            println!("{}", reply.value);
-        }
+        Command::Read(args) => handle_read(&mut client, args).await,
     }
-    Ok(())
 }
 
 fn init_tracing() -> Result<()> {
@@ -64,6 +72,35 @@ fn init_tracing() -> Result<()> {
         .try_init()
         .map_err(|e| anyhow::anyhow!(e))?;
     Ok(())
+}
+
+async fn handle_read(client: &mut BrokerServiceClient<Channel>, args: ReadArgs) -> Result<()> {
+    let request = Request::new(ReadSecretRequest {
+        id: args.id.into_string(),
+        nonce: args.nonce.clone().unwrap_or_default(),
+    });
+    match client.read_secret(request).await {
+        Ok(response) => {
+            let reply = response.into_inner();
+            if args.json {
+                println!("{}", json!({"ok": true, "value": reply.value}));
+            } else if !args.quiet {
+                println!("{}", reply.value);
+            }
+            Ok(())
+        }
+        Err(status) => emit_error(&status, args.json),
+    }
+}
+
+fn emit_error(status: &Status, json: bool) -> Result<()> {
+    if json {
+        println!(
+            "{}",
+            json!({"ok": false, "code": status.code().to_string(), "message": status.message()})
+        );
+    }
+    Err(anyhow::anyhow!(status.to_string()))
 }
 
 async fn connect_via_uds(path: PathBuf) -> Result<BrokerServiceClient<Channel>> {

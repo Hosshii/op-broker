@@ -1,0 +1,11 @@
+{
+  "socket_path": "/Users/you/.op-broker/op-broker.sock",
+  "items": {
+    "github_token": {
+      "op_path": "op://DevVault/GitHub/token"
+    },
+    "aws_access_key": {
+      "op_path": "op://DevVault/AWS/access_key_id"
+    }
+  }
+}
