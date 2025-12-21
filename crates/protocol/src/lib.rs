@@ -1,29 +1,19 @@
-use nom::{
-    Finish, Parser, bytes::complete::take_while1, combinator::all_consuming,
-    error::Error as NomError,
-};
 use serde::{Deserialize, Deserializer, Serialize, Serializer, de::Error as DeError};
 use std::{fmt, ops::Deref, str::FromStr};
 use thiserror::Error;
 
-pub const MAX_SECRET_ID_LEN: usize = 64;
-
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct SecretId(String);
+pub struct OpSecretReference(String);
 
-impl SecretId {
-    pub fn parse(input: &str) -> Result<Self, SecretIdError> {
-        let len = input.len();
-        if len == 0 || len > MAX_SECRET_ID_LEN {
-            return Err(SecretIdError::InvalidLength { len });
+impl OpSecretReference {
+    pub fn parse(input: &str) -> Result<Self, OpSecretReferenceError> {
+        if input.trim().is_empty() {
+            return Err(OpSecretReferenceError::Empty);
         }
-        let valid = |c: char| matches!(c, 'a'..='z' | 'A'..='Z' | '0'..='9' | '_' | '-');
-        let mut parser = all_consuming::<_, _, NomError<_>, _>(take_while1(valid));
-        parser
-            .parse(input)
-            .finish()
-            .map(|(_, matched)| Self(matched.to_owned()))
-            .map_err(|_| SecretIdError::InvalidCharacter)
+        if !input.starts_with("op://") {
+            return Err(OpSecretReferenceError::InvalidScheme);
+        }
+        Ok(Self(input.to_owned()))
     }
 
     pub fn as_str(&self) -> &str {
@@ -35,13 +25,13 @@ impl SecretId {
     }
 }
 
-impl fmt::Display for SecretId {
+impl fmt::Display for OpSecretReference {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str(self.as_str())
     }
 }
 
-impl Deref for SecretId {
+impl Deref for OpSecretReference {
     type Target = str;
 
     fn deref(&self) -> &Self::Target {
@@ -49,23 +39,23 @@ impl Deref for SecretId {
     }
 }
 
-impl FromStr for SecretId {
-    type Err = SecretIdError;
+impl FromStr for OpSecretReference {
+    type Err = OpSecretReferenceError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         Self::parse(s)
     }
 }
 
-impl TryFrom<String> for SecretId {
-    type Error = SecretIdError;
+impl TryFrom<String> for OpSecretReference {
+    type Error = OpSecretReferenceError;
 
     fn try_from(value: String) -> Result<Self, Self::Error> {
-        SecretId::parse(&value)
+        OpSecretReference::parse(&value)
     }
 }
 
-impl Serialize for SecretId {
+impl Serialize for OpSecretReference {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
@@ -74,22 +64,22 @@ impl Serialize for SecretId {
     }
 }
 
-impl<'de> Deserialize<'de> for SecretId {
+impl<'de> Deserialize<'de> for OpSecretReference {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: Deserializer<'de>,
     {
         let s = String::deserialize(deserializer)?;
-        SecretId::parse(&s).map_err(DeError::custom)
+        OpSecretReference::parse(&s).map_err(DeError::custom)
     }
 }
 
 #[derive(Debug, Error, Clone, PartialEq, Eq)]
-pub enum SecretIdError {
-    #[error("secret id length must be between 1 and 64 characters (got {len})")]
-    InvalidLength { len: usize },
-    #[error("secret id may contain only ASCII letters, numbers, underscores, or hyphens")]
-    InvalidCharacter,
+pub enum OpSecretReferenceError {
+    #[error("secret reference must not be empty")]
+    Empty,
+    #[error("secret reference must start with op://")]
+    InvalidScheme,
 }
 
 pub mod pb {
@@ -105,29 +95,25 @@ mod tests {
     use super::*;
 
     #[test]
-    fn secret_id_validation() {
-        assert!(SecretId::parse("valid_ID-123").is_ok());
+    fn op_secret_reference_validation() {
+        assert!(OpSecretReference::parse("op://DevVault/GitHub/token").is_ok());
         assert!(matches!(
-            SecretId::parse(""),
-            Err(SecretIdError::InvalidLength { .. })
+            OpSecretReference::parse(""),
+            Err(OpSecretReferenceError::Empty)
         ));
         assert!(matches!(
-            SecretId::parse("invalid!"),
-            Err(SecretIdError::InvalidCharacter)
-        ));
-        assert!(matches!(
-            SecretId::parse(&"a".repeat(MAX_SECRET_ID_LEN + 1)),
-            Err(SecretIdError::InvalidLength { .. })
+            OpSecretReference::parse("vault/GitHub/token"),
+            Err(OpSecretReferenceError::InvalidScheme)
         ));
     }
 
     #[test]
     fn prost_structs_exist() {
         let request = crate::pb::ReadSecretRequest {
-            id: "github_token".into(),
+            secret_reference: "op://DevVault/GitHub/token".into(),
             nonce: "abc".into(),
         };
-        assert_eq!(request.id, "github_token");
+        assert_eq!(request.secret_reference, "op://DevVault/GitHub/token");
         assert_eq!(request.nonce, "abc");
 
         let response = crate::pb::ReadSecretResponse {

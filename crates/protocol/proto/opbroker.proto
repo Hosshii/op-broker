@@ -7,7 +7,7 @@ service BrokerService {
 }
 
 message ReadSecretRequest {
-  string id = 1;
+  string secret_reference = 1;
   string nonce = 2;
 }
 

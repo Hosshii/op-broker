@@ -173,8 +173,6 @@
 * `zeroize`（secret 破棄用）
 * 標準ライブラリの `UnixStream`
 
-※ async 不要（同期でよい）
-
 ---
 
 ### 内部構造（例）

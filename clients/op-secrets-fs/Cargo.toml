@@ -1,0 +1,23 @@
+[package]
+name = "op-secrets-fs"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+anyhow.workspace = true
+clap.workspace = true
+thiserror.workspace = true
+protocol = { path = "../../crates/protocol" }
+tokio.workspace = true
+tonic.workspace = true
+tower.workspace = true
+hyper-util.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+base64.workspace = true
+
+[target.'cfg(target_os = "linux")'.dependencies]
+fuser.workspace = true
+libc.workspace = true
+zeroize.workspace = true
+nix.workspace = true

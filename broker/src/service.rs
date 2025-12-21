@@ -3,7 +3,7 @@ use crate::{
     op_client::{OpClient, OpError},
 };
 use protocol::{
-    SecretId, pb::ReadSecretRequest, pb::ReadSecretResponse,
+    OpSecretReference, pb::ReadSecretRequest, pb::ReadSecretResponse,
     pb::broker_service_server::BrokerService,
 };
 use std::sync::Arc;
@@ -37,17 +37,21 @@ impl BrokerService for BrokerRpcService {
         request: Request<ReadSecretRequest>,
     ) -> Result<Response<ReadSecretResponse>, Status> {
         let request = request.into_inner();
-        let id = SecretId::parse(&request.id)
+        let reference = OpSecretReference::parse(&request.secret_reference)
             .map_err(|err| Status::invalid_argument(err.to_string()))?;
-        let Some(item) = self.config.resolve(&id) else {
-            return Err(Status::not_found("secret id not permitted"));
+        let Some(item) = self.config.resolve(&reference) else {
+            return Err(Status::not_found("secret reference not permitted"));
         };
-        tracing::info!(id = %id, op_path = %item.op_path, "serving read request");
+        tracing::info!(reference = %item.reference, "serving read request");
 
-        match self.op_client.read(item.op_path).await {
+        match self.op_client.read(item.reference).await {
             Ok(value) => Ok(Response::new(ReadSecretResponse { value })),
             Err(err) => {
-                tracing::error!(id = %id, op_path = %item.op_path, error = %err, "failed to read secret");
+                tracing::error!(
+                    reference = %item.reference,
+                    error = %err,
+                    "failed to read secret"
+                );
                 Err(map_op_error(err))
             }
         }

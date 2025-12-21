@@ -1,5 +1,5 @@
 [workspace]
-members = ["broker", "ctl", "crates/protocol"]
+members = ["broker", "ctl", "crates/protocol", "clients/op-secrets-fs"]
 resolver = "2"
 
 [workspace.package]
@@ -25,3 +25,8 @@ nom = { version = "7", default-features = false, features = ["alloc"] }
 tower = "0.5"
 hyper-util = { version = "0.1", features = ["client", "http1", "http2", "tokio"] }
 which = "6"
+fuser = "0.15"
+libc = "0.2"
+zeroize = "1"
+nix = { version = "0.29", features = ["mount"] }
+base64 = "0.22"

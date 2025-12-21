@@ -1,7 +1,9 @@
 use anyhow::{Context, Result};
 use clap::{Args, Parser, Subcommand};
 use hyper_util::rt::TokioIo;
-use protocol::{SecretId, pb::ReadSecretRequest, pb::broker_service_client::BrokerServiceClient};
+use protocol::{
+    OpSecretReference, pb::ReadSecretRequest, pb::broker_service_client::BrokerServiceClient,
+};
 use serde_json::json;
 use std::{path::PathBuf, process, sync::Arc};
 use tokio::net::UnixStream;
@@ -35,8 +37,8 @@ enum Command {
 
 #[derive(Debug, Args, Clone)]
 struct ReadArgs {
-    #[arg(value_name = "ID")]
-    id: SecretId,
+    #[arg(value_name = "OP_PATH")]
+    reference: OpSecretReference,
     #[arg(long, value_name = "TEXT", help = "Nonce 文字列を broker に渡す")]
     nonce: Option<String>,
     #[arg(long, help = "JSON 形式 ({\"ok\":true,...}) で出力する")]
@@ -76,7 +78,7 @@ fn init_tracing() -> Result<()> {
 
 async fn handle_read(client: &mut BrokerServiceClient<Channel>, args: ReadArgs) -> Result<()> {
     let request = Request::new(ReadSecretRequest {
-        id: args.id.into_string(),
+        secret_reference: args.reference.into_string(),
         nonce: args.nonce.clone().unwrap_or_default(),
     });
     match client.read_secret(request).await {

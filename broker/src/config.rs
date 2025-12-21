@@ -1,7 +1,7 @@
-use protocol::SecretId;
+use protocol::OpSecretReference;
 use serde::Deserialize;
 use std::{
-    collections::BTreeMap,
+    collections::BTreeSet,
     fs,
     path::{Path, PathBuf},
 };
@@ -11,17 +11,12 @@ use thiserror::Error;
 pub struct BrokerConfig {
     pub socket_path: PathBuf,
     #[serde(default)]
-    pub items: BTreeMap<SecretId, ConfigItem>,
-}
-
-#[derive(Debug, Deserialize)]
-pub struct ConfigItem {
-    pub op_path: String,
+    pub items: BTreeSet<OpSecretReference>,
 }
 
 #[derive(Debug, Clone)]
 pub struct ItemLookup<'a> {
-    pub op_path: &'a str,
+    pub reference: &'a OpSecretReference,
 }
 
 impl BrokerConfig {
@@ -45,10 +40,10 @@ impl BrokerConfig {
         self.items.len()
     }
 
-    pub fn resolve<'a>(&'a self, id: &'a SecretId) -> Option<ItemLookup<'a>> {
-        self.items.get(id).map(|item| ItemLookup {
-            op_path: item.op_path.as_str(),
-        })
+    pub fn resolve<'a>(&'a self, reference: &'a OpSecretReference) -> Option<ItemLookup<'a>> {
+        self.items
+            .get(reference)
+            .map(|reference| ItemLookup { reference })
     }
 }
 

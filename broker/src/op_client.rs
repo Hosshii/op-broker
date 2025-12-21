@@ -1,5 +1,5 @@
+use protocol::OpSecretReference;
 use std::{path::PathBuf, time::Duration};
-
 use thiserror::Error;
 use tokio::{process::Command, time::timeout};
 
@@ -28,9 +28,9 @@ impl OpClient {
         }
     }
 
-    pub async fn read(&self, op_path: &str) -> Result<String, OpError> {
+    pub async fn read(&self, reference: &OpSecretReference) -> Result<String, OpError> {
         let mut cmd = Command::new(&self.binary);
-        cmd.arg("read").arg(op_path);
+        cmd.arg("read").arg(reference.as_str());
         let output = timeout(self.timeout, cmd.output())
             .await
             .map_err(|_| OpError::Timeout)??;
@@ -44,9 +44,7 @@ impl OpClient {
         }
 
         let stdout = String::from_utf8(output.stdout).map_err(|_| OpError::InvalidUtf8)?;
-        let trimmed = stdout
-            .trim_end_matches(|c| c == '\n' || c == '\r')
-            .to_owned();
+        let trimmed = stdout.trim_end_matches(['\n', '\r']).to_owned();
         if trimmed.is_empty() {
             return Err(OpError::EmptyResponse);
         }
