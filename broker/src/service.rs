@@ -1,4 +1,7 @@
-use crate::config::BrokerConfig;
+use crate::{
+    config::BrokerConfig,
+    op_client::{OpClient, OpError},
+};
 use protocol::{
     SecretId, pb::ReadSecretRequest, pb::ReadSecretResponse,
     pb::broker_service_server::BrokerService,
@@ -9,11 +12,12 @@ use tonic::{Request, Response, Status};
 #[derive(Debug)]
 pub struct BrokerRpcService {
     config: Arc<BrokerConfig>,
+    op_client: Arc<OpClient>,
 }
 
 impl BrokerRpcService {
-    pub fn new(config: Arc<BrokerConfig>) -> Self {
-        Self { config }
+    pub fn new(config: Arc<BrokerConfig>, op_client: Arc<OpClient>) -> Self {
+        Self { config, op_client }
     }
 }
 
@@ -21,6 +25,7 @@ impl Clone for BrokerRpcService {
     fn clone(&self) -> Self {
         Self {
             config: Arc::clone(&self.config),
+            op_client: Arc::clone(&self.op_client),
         }
     }
 }
@@ -34,15 +39,30 @@ impl BrokerService for BrokerRpcService {
         let request = request.into_inner();
         let id = SecretId::parse(&request.id)
             .map_err(|err| Status::invalid_argument(err.to_string()))?;
-        let Some(item) = self.config.items.get(&id) else {
+        let Some(item) = self.config.resolve(&id) else {
             return Err(Status::not_found("secret id not permitted"));
         };
         tracing::info!(id = %id, op_path = %item.op_path, "serving read request");
 
-        // TODO: Invoke `op read` and return the secret value trimmed.
-        let response = ReadSecretResponse {
-            value: format!("mock-secret-for:{}", item.op_path),
-        };
-        Ok(Response::new(response))
+        match self.op_client.read(item.op_path).await {
+            Ok(value) => Ok(Response::new(ReadSecretResponse { value })),
+            Err(err) => {
+                tracing::error!(id = %id, op_path = %item.op_path, error = %err, "failed to read secret");
+                Err(map_op_error(err))
+            }
+        }
+    }
+}
+
+fn map_op_error(err: OpError) -> Status {
+    match err {
+        OpError::ExecutableNotFound => Status::failed_precondition("op CLI not found in PATH"),
+        OpError::Timeout => Status::deadline_exceeded("op CLI timed out"),
+        OpError::Io(_) | OpError::CommandFailed { .. } => {
+            Status::internal("op CLI returned an error")
+        }
+        OpError::InvalidUtf8 | OpError::EmptyResponse => {
+            Status::internal("op CLI response was invalid")
+        }
     }
 }

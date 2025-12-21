@@ -1,7 +1,8 @@
 mod config;
+mod op_client;
 mod service;
 
-use crate::{config::BrokerConfig, service::BrokerRpcService};
+use crate::{config::BrokerConfig, op_client::OpClient, service::BrokerRpcService};
 use anyhow::{Context, Result};
 use clap::Parser;
 use protocol::pb::broker_service_server::BrokerServiceServer;
@@ -28,6 +29,7 @@ async fn main() -> Result<()> {
 
 async fn run(cli: Cli) -> Result<()> {
     let config = Arc::new(BrokerConfig::load(&cli.config).context("failed to load configuration")?);
+    let op_client = Arc::new(OpClient::discover().context("failed to locate op CLI")?);
     prepare_socket_path(&config.socket_path).context("failed to prepare socket path")?;
     let uds = UnixListener::bind(&config.socket_path)
         .with_context(|| format!("failed to bind socket at {}", config.socket_path.display()))?;
@@ -38,7 +40,7 @@ async fn run(cli: Cli) -> Result<()> {
         "listening for gRPC over Unix socket"
     );
 
-    let service = BrokerRpcService::new(config);
+    let service = BrokerRpcService::new(config, op_client);
     Server::builder()
         .add_service(BrokerServiceServer::new(service))
         .serve_with_incoming(incoming)

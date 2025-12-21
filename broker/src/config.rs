@@ -21,11 +21,8 @@ pub struct ConfigItem {
 
 #[derive(Debug, Clone)]
 pub struct ItemLookup<'a> {
-    pub id: &'a SecretId,
     pub op_path: &'a str,
 }
-
-impl BrokerConfig {
 
 impl BrokerConfig {
     pub fn load(path: impl AsRef<Path>) -> Result<Self, ConfigError> {
@@ -48,9 +45,8 @@ impl BrokerConfig {
         self.items.len()
     }
 
-    pub fn resolve(&self, id: &SecretId) -> Option<ItemLookup<'_>> {
+    pub fn resolve<'a>(&'a self, id: &'a SecretId) -> Option<ItemLookup<'a>> {
         self.items.get(id).map(|item| ItemLookup {
-            id,
             op_path: item.op_path.as_str(),
         })
     }
