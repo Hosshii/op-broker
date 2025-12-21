@@ -24,3 +24,4 @@ tokio-stream = { version = "0.1", features = ["net"] }
 nom = { version = "7", default-features = false, features = ["alloc"] }
 tower = "0.5"
 hyper-util = { version = "0.1", features = ["client", "http1", "http2", "tokio"] }
+which = "6"

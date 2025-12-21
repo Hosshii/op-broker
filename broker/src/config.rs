@@ -19,6 +19,14 @@ pub struct ConfigItem {
     pub op_path: String,
 }
 
+#[derive(Debug, Clone)]
+pub struct ItemLookup<'a> {
+    pub id: &'a SecretId,
+    pub op_path: &'a str,
+}
+
+impl BrokerConfig {
+
 impl BrokerConfig {
     pub fn load(path: impl AsRef<Path>) -> Result<Self, ConfigError> {
         let path = path.as_ref();
@@ -38,6 +46,13 @@ impl BrokerConfig {
 
     pub fn item_count(&self) -> usize {
         self.items.len()
+    }
+
+    pub fn resolve(&self, id: &SecretId) -> Option<ItemLookup<'_>> {
+        self.items.get(id).map(|item| ItemLookup {
+            id,
+            op_path: item.op_path.as_str(),
+        })
     }
 }
 

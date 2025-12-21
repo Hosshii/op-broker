@@ -17,3 +17,4 @@ tracing.workspace = true
 tracing-subscriber.workspace = true
 tonic.workspace = true
 tokio-stream.workspace = true
+which.workspace = true

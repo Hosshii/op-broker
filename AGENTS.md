@@ -32,3 +32,6 @@
 - `~/.op-broker` は `0700`、ソケットと設定ファイルは `0600` を徹底し、Makefile やスクリプトでも明示的に `chmod` します。
 - ログには secret の断片すら書き出さず、必要なら `<redacted>` 表記を使用します。
 - サンプル設定やドキュメントでは Touch ID, SSH トンネル, allowlist 更新手順など実運用で迷いやすい点を要約し、詳細は `docs/` へ誘導してください。
+
+## その他
+If a command fails due to insufficient permissions, you must elevate the command to the user for approval.
