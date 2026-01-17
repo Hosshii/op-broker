@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git ls-tree:*)",
+      "Bash(git -C /workspace show HEAD:crates/protocol/proto/opbroker.proto)",
+      "Bash(git -C /workspace show HEAD:broker/src/main.rs)",
+      "Bash(git -C /workspace show HEAD:broker/src/service.rs)",
+      "Bash(git -C /workspace show HEAD:ctl/src/main.rs)",
+      "Bash(git -C /workspace show HEAD:crates/protocol/src/lib.rs)",
+      "Bash(git -C /workspace show HEAD:crates/protocol/build.rs)",
+      "Bash(git -C /workspace show:*)",
+      "Bash(git -C /workspace show HEAD:crates/protocol/Cargo.toml)",
+      "Bash(cargo build:*)",
+      "Bash(tree:*)"
+    ]
+  }
+}
