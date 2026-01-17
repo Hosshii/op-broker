@@ -78,5 +78,8 @@
 			"target": "/home/vscode/.codex",
 			"type": "volume"
 		}
+	],
+	"runArgs": [
+		"--network=host"
 	]
 }
