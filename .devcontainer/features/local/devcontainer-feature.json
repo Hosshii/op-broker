@@ -1,0 +1,40 @@
+{
+	"name": "Install custom tools",
+	"id": "local",
+	"version": "1.0.0",
+	"description": "A feature to install custom tools",
+	"options": {},
+	"installsAfter": [
+		"ghcr.io/devcontainers/features/node",
+		"ghcr.io/devcontainers-extra/features/mise"
+	],
+	"mounts": [
+		{
+			"source": "claude-code-bashhistory-${devcontainerId}",
+			"target": "/commandhistory",
+			"type": "volume"
+		},
+		{
+			"source": "claude-code-config-${devcontainerId}",
+			"target": "/home/vscode/.claude",
+			"type": "volume"
+		},
+		{
+			"source": "codex-config-${devcontainerId}",
+			"target": "/home/vscode/.codex",
+			"type": "volume"
+		}
+	],
+	"containerEnv": {
+		"CLAUDE_CONFIG_DIR": "/home/vscode/.claude",
+		"DISABLE_AUTOUPDATER": "1" // disable claude code auto update
+	},
+	"customizations": {
+		"vscode": {
+			"extensions": [
+				"anthropic.claude-code",
+				"openai.chatgpt"
+			]
+		}
+	}
+}

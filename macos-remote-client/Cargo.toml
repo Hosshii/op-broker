@@ -1,0 +1,17 @@
+[package]
+name = "macos-remote-client"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[[bin]]
+name = "macos-remote"
+path = "src/main.rs"
+
+[dependencies]
+macos-remote-protocol = { path = "../crates/macos-remote-protocol" }
+anyhow.workspace = true
+tokio.workspace = true
+tonic.workspace = true
+clap.workspace = true

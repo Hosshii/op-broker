@@ -1,0 +1,25 @@
+syntax = "proto3";
+package macos_remote;
+
+service MacOsRemoteService {
+  rpc Notify (NotifyRequest) returns (NotifyResponse);
+  rpc OpRead (OpReadRequest) returns (OpReadResponse);
+}
+
+message NotifyRequest {
+  string title = 1;
+  string message = 2;
+}
+
+message NotifyResponse {
+  bool success = 1;
+  string error = 2;
+}
+
+message OpReadRequest {
+  string reference = 1;
+}
+
+message OpReadResponse {
+  string value = 1;
+}

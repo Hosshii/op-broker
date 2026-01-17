@@ -1,0 +1,82 @@
+// For format details, see https://aka.ms/devcontainer.json. For config options, see the
+// README at: https://github.com/devcontainers/templates/tree/main/src/debian
+{
+	"name": "Debian",
+	// Or use a Dockerfile or Docker Compose file. More info: https://containers.dev/guide/dockerfile
+	// "image": "mcr.microsoft.com/devcontainers/base:debian",
+	"build": {
+		// Path is relative to the devcontainer.json file.
+		"dockerfile": "Dockerfile"
+	},
+	"features": {
+		"ghcr.io/devcontainers/features/common-utils:2.5.3": {
+			"configureZshAsDefaultShell": true
+		},
+		"ghcr.io/devcontainers/features/rust:1": {},
+		"ghcr.io/devcontainers/features/node:1": {},
+		"ghcr.io/devcontainers-extra/features/protoc:1": {},
+		"ghcr.io/devcontainers-extra/features/mise:1": {}
+		// "./features/local": {}
+		// "ghcr.io/anthropics/devcontainer-features/claude-code:1": {}
+	},
+	// Features to add to the dev container. More info: https://containers.dev/features.
+	// "features": {},
+	// Use 'forwardPorts' to make a list of ports inside the container available locally.
+	// "forwardPorts": [],
+	// Configure tool-specific properties.
+	"customizations": {
+		"vscode": {
+			"extensions": [
+				"biomejs.biome",
+				"streetsidesoftware.code-spell-checker",
+				"rust-lang.rust-analyzer",
+				"tauri-apps.tauri-vscode",
+				"anthropic.claude-code",
+				"bierner.markdown-mermaid",
+				"anthropic.claude-code",
+				"openai.chatgpt"
+			]
+		},
+		"settings": {
+			"editor.formatOnSave": true,
+			"terminal.integrated.defaultProfile.linux": "zsh",
+			"terminal.integrated.profiles.linux": {
+				"bash": {
+					"path": "bash",
+					"icon": "terminal-bash"
+				},
+				"zsh": {
+					"path": "zsh"
+				}
+			}
+		}
+	},
+	// Uncomment to connect as root instead. More info: https://aka.ms/dev-containers-non-root.
+	"remoteUser": "vscode",
+	"remoteEnv": {
+		"NODE_OPTIONS": "--max-old-space-size=4096",
+		"POWERLEVEL9K_DISABLE_GITSTATUS": "true",
+		"CLAUDE_CONFIG_DIR": "/home/vscode/.claude",
+		"DISABLE_AUTOUPDATER": "1" // disable claude code auto update
+	},
+	"workspaceMount": "source=${localWorkspaceFolder},target=/workspace,type=bind,consistency=delegated",
+	"workspaceFolder": "/workspace",
+	"postCreateCommand": ".devcontainer/postCreate.sh",
+	"mounts": [
+		{
+			"source": "claude-code-bashhistory-${devcontainerId}",
+			"target": "/commandhistory",
+			"type": "volume"
+		},
+		{
+			"source": "claude-code-config-${devcontainerId}",
+			"target": "/home/vscode/.claude",
+			"type": "volume"
+		},
+		{
+			"source": "codex-config-${devcontainerId}",
+			"target": "/home/vscode/.codex",
+			"type": "volume"
+		}
+	]
+}
