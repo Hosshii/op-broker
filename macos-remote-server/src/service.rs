@@ -51,14 +51,19 @@ impl MacOsRemoteService for MacOsRemoteServiceImpl {
         request: Request<NotifyRequest>,
     ) -> Result<Response<NotifyResponse>, Status> {
         let req = request.into_inner();
-        info!(title = %req.title, message = %req.message, "notify request");
+        let sound = if req.sound.is_empty() {
+            None
+        } else {
+            Some(req.sound.as_str())
+        };
+        info!(title = %req.title, message = %req.message, sound = ?sound, "notify request");
 
         let notifier = self
             .notifier
             .as_ref()
             .ok_or_else(|| Status::unavailable("terminal-notifier not available"))?;
 
-        match notifier.notify(&req.title, &req.message).await {
+        match notifier.notify(&req.title, &req.message, sound).await {
             Ok(()) => Ok(Response::new(NotifyResponse {
                 success: true,
                 error: String::new(),

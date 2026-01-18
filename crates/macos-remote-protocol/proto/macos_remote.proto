@@ -9,6 +9,7 @@ service MacOsRemoteService {
 message NotifyRequest {
   string title = 1;
   string message = 2;
+  string sound = 3;  // Optional: "Ping", "Pop", "Glass", "default", or sound file path
 }
 
 message NotifyResponse {

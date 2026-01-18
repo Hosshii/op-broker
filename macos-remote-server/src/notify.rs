@@ -14,14 +14,20 @@ impl Notifier {
         Ok(Self { binary })
     }
 
-    pub async fn notify(&self, title: &str, message: &str) -> Result<(), NotifyError> {
-        let output = Command::new(&self.binary)
-            .arg("-title")
-            .arg(title)
-            .arg("-message")
-            .arg(message)
-            .output()
-            .await?;
+    pub async fn notify(
+        &self,
+        title: &str,
+        message: &str,
+        sound: Option<&str>,
+    ) -> Result<(), NotifyError> {
+        let mut cmd = Command::new(&self.binary);
+        cmd.arg("-title").arg(title).arg("-message").arg(message);
+
+        if let Some(s) = sound {
+            cmd.arg("-sound").arg(s);
+        }
+
+        let output = cmd.output().await?;
 
         if !output.status.success() {
             let stderr = String::from_utf8_lossy(&output.stderr).trim().to_owned();
