@@ -59,8 +59,6 @@ macos-remote op-read "op://vault/item/field"
 macos-remote --addr http://127.0.0.1:9000 notify "Test" "Hello"
 ```
 
-**利用可能なサウンド:** `Ping`, `Pop`, `Glass`, `default`, またはサウンドファイルパス
-
 ## SSH Tunnel Setup
 
 ```bash
