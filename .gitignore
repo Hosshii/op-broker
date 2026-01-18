@@ -1,3 +1,4 @@
 /target
 .claude/notify.sh
 .claude/hooks
+.claude/settings.local.json

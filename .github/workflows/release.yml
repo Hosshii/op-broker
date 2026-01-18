@@ -43,16 +43,65 @@ jobs:
       - name: Build release binaries
         run: cargo build --release --target ${{ matrix.target }}
 
-      - name: Upload server binary
-        uses: actions/upload-artifact@v4
-        with:
-          name: macos-remote-server-${{ matrix.target }}
-          path: target/${{ matrix.target }}/release/macos-remote-server
-          retention-days: 30
+      - name: Get version
+        id: version
+        run: |
+          if [[ "${{ github.ref_type }}" == "tag" ]]; then
+            echo "version=${{ github.ref_name }}" >> $GITHUB_OUTPUT
+          else
+            echo "version=dev-$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+          fi
 
-      - name: Upload client binary
+      - name: Create archives
+        run: |
+          mkdir -p dist
+          VERSION=${{ steps.version.outputs.version }}
+          TARGET=${{ matrix.target }}
+
+          # Archive server binary
+          tar -czvf "dist/macos-remote-server-${VERSION}-${TARGET}.tar.gz" \
+            -C target/${TARGET}/release macos-remote-server
+
+          # Archive client binary
+          tar -czvf "dist/macos-remote-${VERSION}-${TARGET}.tar.gz" \
+            -C target/${TARGET}/release macos-remote
+
+      - name: Upload archives
         uses: actions/upload-artifact@v4
         with:
-          name: macos-remote-${{ matrix.target }}
-          path: target/${{ matrix.target }}/release/macos-remote
-          retention-days: 30
+          name: archives-${{ matrix.target }}
+          path: dist/*.tar.gz
+          retention-days: 1
+
+  release:
+    name: Create Release
+    needs: build
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          pattern: archives-*
+          merge-multiple: true
+
+      - name: Generate checksums
+        run: |
+          cd artifacts
+          sha256sum *.tar.gz > SHA256SUMS.txt
+          cat SHA256SUMS.txt
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create ${{ github.ref_name }} \
+            artifacts/*.tar.gz \
+            artifacts/SHA256SUMS.txt \
+            --generate-notes
