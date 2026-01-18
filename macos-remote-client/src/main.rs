@@ -25,6 +25,9 @@ enum Command {
         title: String,
         /// Notification message
         message: String,
+        /// Sound name (e.g., Ping, Pop, Glass, default) or file path
+        #[arg(short, long)]
+        sound: Option<String>,
     },
     /// Read a secret from 1Password
     OpRead {
@@ -44,9 +47,17 @@ async fn main() -> Result<()> {
     let mut client = connect(&args.addr).await?;
 
     match args.command {
-        Command::Notify { title, message } => {
+        Command::Notify {
+            title,
+            message,
+            sound,
+        } => {
             let response = client
-                .notify(NotifyRequest { title, message })
+                .notify(NotifyRequest {
+                    title,
+                    message,
+                    sound: sound.unwrap_or_default(),
+                })
                 .await?
                 .into_inner();
 
