@@ -14,7 +14,7 @@
 
 ## Features
 
-- **Notify** - `terminal-notifier`で通知表示
+- **Notify** - `terminal-notifier`で通知表示（サウンド指定可）
 - **OpRead** - `op read`で1Passwordシークレット取得
 
 ## Requirements
@@ -48,12 +48,18 @@ macos-remote-server --port 9000
 # 通知を送信
 macos-remote notify "Title" "Message"
 
+# サウンド付き通知
+macos-remote notify "Title" "Message" --sound Ping
+macos-remote notify "Title" "Message" -s default
+
 # 1Passwordシークレットを取得
 macos-remote op-read "op://vault/item/field"
 
 # サーバーアドレスを指定
 macos-remote --addr http://127.0.0.1:9000 notify "Test" "Hello"
 ```
+
+**利用可能なサウンド:** `Ping`, `Pop`, `Glass`, `default`, またはサウンドファイルパス
 
 ## SSH Tunnel Setup
 
