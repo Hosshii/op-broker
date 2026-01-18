@@ -33,6 +33,22 @@
 cargo build --release
 ```
 
+## Release
+
+`v*` タグをpushするとGitHub Actionsがビルドを実行し、GitHub Releasesにバイナリを公開する。
+
+```bash
+git tag v1.0.0
+git push origin v1.0.0
+```
+
+リリースには以下が含まれる:
+- `macos-remote-server-{version}-{target}.tar.gz`
+- `macos-remote-{version}-{target}.tar.gz`
+- `SHA256SUMS.txt`
+
+対応ターゲット: `aarch64-apple-darwin`, `x86_64-unknown-linux-gnu`
+
 ## Usage
 
 ### Server (macOS)
