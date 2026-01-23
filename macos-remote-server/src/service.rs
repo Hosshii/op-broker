@@ -1,20 +1,22 @@
 use macos_remote_protocol::pb::{
-    NotifyRequest, NotifyResponse, OpReadRequest, OpReadResponse,
+    ExecRequest, ExecResponse, NotifyRequest, NotifyResponse, OpReadRequest, OpReadResponse,
     mac_os_remote_service_server::MacOsRemoteService,
 };
 use tonic::{Request, Response, Status};
 use tracing::{error, info};
 
+use crate::exec_client::ExecClient;
 use crate::notify::Notifier;
 use crate::op_client::OpClient;
 
 pub struct MacOsRemoteServiceImpl {
     notifier: Option<Notifier>,
     op_client: Option<OpClient>,
+    exec_client: Option<ExecClient>,
 }
 
 impl MacOsRemoteServiceImpl {
-    pub fn new() -> Self {
+    pub fn new(exec_client: Option<ExecClient>) -> Self {
         let notifier = match Notifier::discover() {
             Ok(n) => {
                 info!("terminal-notifier discovered");
@@ -40,6 +42,7 @@ impl MacOsRemoteServiceImpl {
         Self {
             notifier,
             op_client,
+            exec_client,
         }
     }
 }
@@ -89,6 +92,25 @@ impl MacOsRemoteService for MacOsRemoteServiceImpl {
 
         match op_client.read(&req.reference).await {
             Ok(value) => Ok(Response::new(OpReadResponse { value })),
+            Err(e) => Err(Status::internal(e.to_string())),
+        }
+    }
+
+    async fn exec(&self, request: Request<ExecRequest>) -> Result<Response<ExecResponse>, Status> {
+        let req = request.into_inner();
+        info!(args = ?req.args, "exec request");
+
+        let exec_client = self
+            .exec_client
+            .as_ref()
+            .ok_or_else(|| Status::unavailable("exec command not configured"))?;
+
+        match exec_client.execute(&req.args).await {
+            Ok(output) => Ok(Response::new(ExecResponse {
+                exit_code: output.exit_code,
+                stdout: output.stdout,
+                stderr: output.stderr,
+            })),
             Err(e) => Err(Status::internal(e.to_string())),
         }
     }

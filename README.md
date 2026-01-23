@@ -16,6 +16,7 @@
 
 - **Notify** - `terminal-notifier`で通知表示（サウンド指定可）
 - **OpRead** - `op read`で1Passwordシークレット取得
+- **Exec** - サーバー指定のコマンドを引数付きで実行
 
 ## Requirements
 
@@ -56,6 +57,9 @@ git push origin v1.0.0
 ```bash
 macos-remote-server
 macos-remote-server --port 9000
+
+# カスタムコマンド実行を有効化
+macos-remote-server --exec-path /path/to/command
 ```
 
 ### Client (Container)
@@ -70,6 +74,9 @@ macos-remote notify "Title" "Message" -s default
 
 # 1Passwordシークレットを取得
 macos-remote op-read "op://vault/item/field"
+
+# サーバー指定のコマンドを実行
+macos-remote exec arg1 arg2 --flag
 
 # サーバーアドレスを指定
 macos-remote --addr http://127.0.0.1:9000 notify "Test" "Hello"

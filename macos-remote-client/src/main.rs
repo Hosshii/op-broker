@@ -1,7 +1,8 @@
 use anyhow::Result;
 use clap::{Parser, Subcommand};
 use macos_remote_protocol::pb::{
-    NotifyRequest, OpReadRequest, mac_os_remote_service_client::MacOsRemoteServiceClient,
+    ExecRequest, NotifyRequest, OpReadRequest,
+    mac_os_remote_service_client::MacOsRemoteServiceClient,
 };
 use tonic::transport::Channel;
 
@@ -33,6 +34,12 @@ enum Command {
     OpRead {
         /// Secret reference (e.g., op://vault/item/field)
         reference: String,
+    },
+    /// Execute a command on the server
+    Exec {
+        /// Arguments to pass to the command
+        #[arg(trailing_var_arg = true, allow_hyphen_values = true)]
+        args: Vec<String>,
     },
 }
 
@@ -75,6 +82,17 @@ async fn main() -> Result<()> {
                 .into_inner();
 
             println!("{}", response.value);
+        }
+        Command::Exec { args } => {
+            let response = client.exec(ExecRequest { args }).await?.into_inner();
+
+            if !response.stdout.is_empty() {
+                println!("{}", response.stdout);
+            }
+            if !response.stderr.is_empty() {
+                eprintln!("{}", response.stderr);
+            }
+            std::process::exit(response.exit_code);
         }
     }
 

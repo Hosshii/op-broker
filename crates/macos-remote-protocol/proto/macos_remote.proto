@@ -4,6 +4,7 @@ package macos_remote;
 service MacOsRemoteService {
   rpc Notify (NotifyRequest) returns (NotifyResponse);
   rpc OpRead (OpReadRequest) returns (OpReadResponse);
+  rpc Exec (ExecRequest) returns (ExecResponse);
 }
 
 message NotifyRequest {
@@ -23,4 +24,14 @@ message OpReadRequest {
 
 message OpReadResponse {
   string value = 1;
+}
+
+message ExecRequest {
+  repeated string args = 1;
+}
+
+message ExecResponse {
+  int32 exit_code = 1;
+  string stdout = 2;
+  string stderr = 3;
 }
