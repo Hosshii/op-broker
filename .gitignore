@@ -2,3 +2,5 @@
 .claude/notify.sh
 .claude/hooks
 .claude/settings.local.json
+.direnv
+.envrc

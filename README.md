@@ -50,6 +50,29 @@ git push origin v1.0.0
 
 対応ターゲット: `aarch64-apple-darwin`, `x86_64-unknown-linux-gnu`
 
+## Build with Nix
+
+```bash
+# client + server
+nix build
+
+# client only
+nix build .#client
+
+# server only
+nix build .#server
+```
+
+```bash
+# open a development shell with Rust/protoc toolchain
+nix develop
+
+# run all nix checks (build, clippy, fmt, test)
+nix flake check
+```
+
+`nix develop` はビルド必須ツールのみを提供します。`macos-remote-server` 実行時に必要な `terminal-notifier` と `op` は別途インストールが必要です。
+
 ## Usage
 
 ### Server (macOS)
