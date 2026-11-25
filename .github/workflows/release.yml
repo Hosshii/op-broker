@@ -40,7 +40,7 @@ jobs:
         with:
           key: ${{ matrix.target }}
 
-      - name: Build release binaries
+      - name: Build release binary
         run: cargo build --release --target ${{ matrix.target }}
 
       - name: Get version
@@ -52,19 +52,14 @@ jobs:
             echo "version=dev-$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
           fi
 
-      - name: Create archives
+      - name: Create archive
         run: |
           mkdir -p dist
           VERSION=${{ steps.version.outputs.version }}
           TARGET=${{ matrix.target }}
 
-          # Archive server binary
-          tar -czvf "dist/macos-remote-server-${VERSION}-${TARGET}.tar.gz" \
-            -C target/${TARGET}/release macos-remote-server
-
-          # Archive client binary
-          tar -czvf "dist/macos-remote-${VERSION}-${TARGET}.tar.gz" \
-            -C target/${TARGET}/release macos-remote
+          tar -czvf "dist/localtools-${VERSION}-${TARGET}.tar.gz" \
+            -C target/${TARGET}/release localtools
 
       - name: Upload archives
         uses: actions/upload-artifact@v4

@@ -4,22 +4,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## プロジェクト概要
 
-コンテナ/リモートクライアントからmacOSを遠隔操作するRust製gRPCアプリケーション。サーバーはmacOS上で動作し、`terminal-notifier`（通知）と`op read`（1Passwordシークレット取得）をgRPC経由で公開する。クライアントはSSHリバーストンネル経由で接続。
-
-```
-┌─────────────────┐       SSH -R 50052       ┌─────────────────┐
-│   Container     │ ◄──────────────────────► │     macOS       │
-│  macos-remote   │     localhost:50052      │ macos-remote-   │
-│  (client CLI)   │ ──────────────────────►  │ server          │
-└─────────────────┘                          └─────────────────┘
-```
+自作 CLI を一つの Rust バイナリ `localtools` にまとめたワークスペース。`op-broker` はリモートクライアントから macOS の通知、1Password シークレット取得、コマンド実行を提供する。クライアントは SSH リバーストンネル経由で接続する。`ssh` は OpenSSH を起動し、tmux 内の対話セッション中にペインを着色する。
 
 ## ビルドコマンド
 
 ```bash
 cargo build --release              # 全クレートをビルド
-cargo build -p macos-remote-server # サーバーのみ
-cargo build -p macos-remote-client # クライアントのみ
+cargo build -p localtools          # 統合バイナリをビルド
 cargo build -p macos-remote-protocol # protoバインディング再生成
 ```
 
@@ -43,27 +34,31 @@ cargo clippy --all-targets -- -D warnings    # 警告をエラーとしてリン
 
 ```bash
 # サーバー (macOS)
-cargo run -p macos-remote-server -- --port 50052
+cargo run -p localtools -- op-broker serve --port 50052
 
 # クライアント (Container)
-cargo run -p macos-remote-client -- notify "タイトル" "メッセージ"
-cargo run -p macos-remote-client -- op-read "op://vault/item/field"
-cargo run -p macos-remote-client -- --addr http://127.0.0.1:9000 notify "Test" "Hello"
+cargo run -p localtools -- op-broker notify "タイトル" "メッセージ"
+cargo run -p localtools -- op-broker op-read "op://vault/item/field"
+cargo run -p localtools -- op-broker --addr http://127.0.0.1:9000 notify "Test" "Hello"
+
+# SSH (tmux)
+cargo run -p localtools -- ssh nixos
 ```
 
 ## アーキテクチャ
 
 **ワークスペースクレート:**
 - `macos-remote-protocol` (`crates/macos-remote-protocol/`) - Proto定義、tonic/prostバインディング
-- `macos-remote-server` (`macos-remote-server/`) - macOS用gRPCサーバー、`terminal-notifier`と`op` CLIをラップ
-- `macos-remote-client` (`macos-remote-client/`) - コンテナ用CLIクライアント
+- `localtools` (`crates/localtools/`) - CLI の入口とコマンドの振り分け
+- `op-broker` (`crates/op-broker/`) - gRPC クライアントと macOS サーバー
+- `ssh-pane` (`crates/ssh-pane/`) - OpenSSH の起動、tmux の着色と復元
 
 **Proto定義:** `crates/macos-remote-protocol/proto/macos_remote.proto`
-- `MacOsRemoteService`に`Notify`と`OpRead` RPCを定義
+- `MacOsRemoteService`に`Notify`、`OpRead`、`Exec` RPCを定義
 - protoを編集後、`cargo build -p macos-remote-protocol`でバインディング再生成
 
 **サーバーモジュール:**
-- `main.rs` - エントリポイント、CLIパース（clap）
+- `crates/op-broker/src/server/mod.rs` - サーバーの起動と引数定義
 - `service.rs` - gRPCサービス実装
 - `notify.rs` - `terminal-notifier`ラッパー
 - `op_client.rs` - 1Password CLIラッパー（10秒タイムアウト）

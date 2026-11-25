@@ -1,25 +1,13 @@
 use anyhow::Result;
-use clap::{Parser, Subcommand};
+use clap::Subcommand;
 use macos_remote_protocol::pb::{
     ExecRequest, NotifyRequest, OpReadRequest,
     mac_os_remote_service_client::MacOsRemoteServiceClient,
 };
 use tonic::transport::Channel;
 
-#[derive(Parser, Debug)]
-#[command(name = "macos-remote")]
-#[command(about = "CLI client for macOS remote control")]
-struct Args {
-    /// Server address
-    #[arg(long, default_value = "http://127.0.0.1:50052")]
-    addr: String,
-
-    #[command(subcommand)]
-    command: Command,
-}
-
 #[derive(Subcommand, Debug)]
-enum Command {
+pub(crate) enum Command {
     /// Send a notification
     Notify {
         /// Notification title
@@ -48,12 +36,10 @@ async fn connect(addr: &str) -> Result<MacOsRemoteServiceClient<Channel>> {
     Ok(client)
 }
 
-#[tokio::main]
-async fn main() -> Result<()> {
-    let args = Args::parse();
-    let mut client = connect(&args.addr).await?;
+pub(crate) async fn run(command: Command, addr: &str) -> Result<u8> {
+    let mut client = connect(addr).await?;
 
-    match args.command {
+    match command {
         Command::Notify {
             title,
             message,
@@ -72,7 +58,7 @@ async fn main() -> Result<()> {
                 println!("Notification sent successfully");
             } else {
                 eprintln!("Notification failed: {}", response.error);
-                std::process::exit(1);
+                return Ok(1);
             }
         }
         Command::OpRead { reference } => {
@@ -92,9 +78,9 @@ async fn main() -> Result<()> {
             if !response.stderr.is_empty() {
                 eprintln!("{}", response.stderr);
             }
-            std::process::exit(response.exit_code);
+            return Ok(response.exit_code as u8);
         }
     }
 
-    Ok(())
+    Ok(0)
 }

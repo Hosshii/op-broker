@@ -6,18 +6,14 @@ mod service;
 use std::path::PathBuf;
 
 use anyhow::Result;
-use clap::Parser;
+use exec_client::ExecClient;
 use macos_remote_protocol::pb::mac_os_remote_service_server::MacOsRemoteServiceServer;
 use service::MacOsRemoteServiceImpl;
 use tonic::transport::Server;
 use tracing::info;
 
-use crate::exec_client::ExecClient;
-
-#[derive(Parser, Debug)]
-#[command(name = "macos-remote-server")]
-#[command(about = "gRPC server for macOS remote control")]
-struct Args {
+#[derive(clap::Args, Debug)]
+pub(crate) struct Args {
     /// Port to listen on
     #[arg(short, long, default_value = "50052")]
     port: u16,
@@ -27,17 +23,12 @@ struct Args {
     exec_path: Option<PathBuf>,
 }
 
-#[tokio::main]
-async fn main() -> Result<()> {
+pub(crate) async fn serve(args: Args) -> Result<()> {
     tracing_subscriber::fmt::init();
 
-    let args = Args::parse();
     let addr = format!("127.0.0.1:{}", args.port).parse()?;
 
-    let exec_client = args
-        .exec_path
-        .map(|p| ExecClient::from_path(p.clone()))
-        .transpose()?;
+    let exec_client = args.exec_path.map(ExecClient::from_path).transpose()?;
 
     let service = MacOsRemoteServiceImpl::new(exec_client);
 

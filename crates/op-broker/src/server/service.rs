@@ -5,9 +5,9 @@ use macos_remote_protocol::pb::{
 use tonic::{Request, Response, Status};
 use tracing::{error, info};
 
-use crate::exec_client::ExecClient;
-use crate::notify::Notifier;
-use crate::op_client::OpClient;
+use super::exec_client::ExecClient;
+use super::notify::Notifier;
+use super::op_client::OpClient;
 
 pub struct MacOsRemoteServiceImpl {
     notifier: Option<Notifier>,

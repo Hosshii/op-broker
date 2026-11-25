@@ -1,5 +1,5 @@
 {
-  description = "Nix flake for building macos-remote with crane";
+  description = "Local command-line tools";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
@@ -44,15 +44,8 @@
             path: type:
             (craneLib.filterCargoSources path type) || (pkgs.lib.hasSuffix ".proto" path);
         };
-        clientMeta = craneLib.crateNameFromCargoToml {
-          cargoToml = ./macos-remote-client/Cargo.toml;
-        };
-        serverMeta = craneLib.crateNameFromCargoToml {
-          cargoToml = ./macos-remote-server/Cargo.toml;
-        };
-        workspaceMeta = {
-          pname = "macos-remote-workspace";
-          version = clientMeta.version;
+        packageMeta = craneLib.crateNameFromCargoToml {
+          cargoToml = ./crates/localtools/Cargo.toml;
         };
 
         commonArgs = {
@@ -65,45 +58,37 @@
         };
 
         cargoArtifacts = craneLib.buildDepsOnly (commonArgs // {
-          pname = "macos-remote-deps";
-          version = workspaceMeta.version;
+          pname = "localtools-deps";
+          inherit (packageMeta) version;
         });
 
-        client = craneLib.buildPackage (commonArgs // {
+        localtools = craneLib.buildPackage (commonArgs // {
           inherit cargoArtifacts;
-          inherit (clientMeta) pname version;
-          cargoExtraArgs = "-p macos-remote-client";
-        });
-        server = craneLib.buildPackage (commonArgs // {
-          inherit cargoArtifacts;
-          inherit (serverMeta) pname version;
-          cargoExtraArgs = "-p macos-remote-server";
+          inherit (packageMeta) pname version;
+          cargoExtraArgs = "-p localtools";
+          meta.mainProgram = "localtools";
         });
       in
       {
         packages = {
-          inherit client server;
-          default = pkgs.symlinkJoin {
-            name = "macos-remote-binaries";
-            paths = [ client server ];
-          };
+          inherit localtools;
+          default = localtools;
         };
 
         checks = {
-          client-build = client;
-          server-build = server;
+          localtools-build = localtools;
           clippy = craneLib.cargoClippy (commonArgs // {
             inherit cargoArtifacts;
-            inherit (workspaceMeta) pname version;
+            inherit (packageMeta) pname version;
             cargoClippyExtraArgs = "--all-targets -- -D warnings";
           });
           fmt = craneLib.cargoFmt {
             inherit src;
-            inherit (workspaceMeta) pname version;
+            inherit (packageMeta) pname version;
           };
           tests = craneLib.cargoTest (commonArgs // {
             inherit cargoArtifacts;
-            inherit (workspaceMeta) pname version;
+            inherit (packageMeta) pname version;
             cargoExtraArgs = "--all";
           });
         };

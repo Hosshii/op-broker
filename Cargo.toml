@@ -1,8 +1,8 @@
 [workspace]
 members = [
     "crates/macos-remote-protocol",
-    "macos-remote-server",
-    "macos-remote-client",
+    "crates/localtools",
+    "crates/op-broker",
 ]
 resolver = "2"
 
